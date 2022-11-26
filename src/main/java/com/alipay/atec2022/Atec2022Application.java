@@ -5,11 +5,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
+@EnableAspectJAutoProxy(exposeProxy = true)
 @SpringBootApplication
 public class Atec2022Application {
     @Value("${activate-flag-file-path}")

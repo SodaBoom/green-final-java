@@ -88,11 +88,11 @@ public class TotalEnergyLegacyService {
                 memToCollect.status = utils.Status.COLLECTED_BY_OTHER;
             }
             this.totalEnergyRepository.update(curTotalEnergy, userId);
-            this.toCollectEnergyRepository.update(
-                    memToCollect.total_energy,
-                    memToCollect.status == utils.Status.ALL_COLLECTED ? "all_collected" : "collected_by_other",
-                    toCollectEnergyId
-            );
+//            this.toCollectEnergyRepository.update(
+//                    memToCollect.total_energy,
+//                    memToCollect.status == utils.Status.ALL_COLLECTED ? "all_collected" : "collected_by_other",
+//                    toCollectEnergyId
+//            );
         }
     }
 }
