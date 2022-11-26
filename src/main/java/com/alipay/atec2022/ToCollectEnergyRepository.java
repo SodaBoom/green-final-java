@@ -5,6 +5,7 @@
 package com.alipay.atec2022;
 
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 
@@ -21,9 +22,16 @@ public interface ToCollectEnergyRepository extends CrudRepository<ToCollectEnerg
             " WHERE toCollectEnergy.id = ?1 and " +
             "((toCollectEnergy.status = '') or (toCollectEnergy.userId=?2 and toCollectEnergy.status <> 'all_collected'))")
     ToCollectEnergy findByUserId(Integer id, String userId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT toCollectEnergy FROM ToCollectEnergy toCollectEnergy WHERE toCollectEnergy.id = ?1")
     ToCollectEnergy findById2(Integer id);
+
     @Query("SELECT toCollectEnergy FROM ToCollectEnergy toCollectEnergy")
     List<ToCollectEnergy> findAll();
+
+    @Modifying
+    @Query("UPDATE ToCollectEnergy SET toCollectEnergy = ?1, status = ?2 WHERE id = ?3")
+    void update(Integer toCollectEnergy, String status, Integer id);
+
 }

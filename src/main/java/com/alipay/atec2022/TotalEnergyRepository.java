@@ -5,10 +5,12 @@
 package com.alipay.atec2022;
 
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 
 import javax.persistence.LockModeType;
+import java.util.List;
 
 /**
  * @author khotyn
@@ -21,4 +23,8 @@ public interface TotalEnergyRepository extends CrudRepository<TotalEnergy, Integ
 
     @Query("SELECT totalEnergy FROM TotalEnergy totalEnergy WHERE totalEnergy.userId = ?1")
     TotalEnergy findByUserIdNotUpdate(String userId);
+
+    @Modifying
+    @Query("UPDATE TotalEnergy SET totalEnergy = ?1 WHERE userId = ?2")
+    void update(Integer toCollectEnergy, String userId);
 }

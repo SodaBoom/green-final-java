@@ -1,0 +1,7 @@
+*.DS_DStore
+
+cmake-build-debug
+/target
+.idea
+.vscode
+*.tar

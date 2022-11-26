@@ -4,14 +4,12 @@
  */
 package com.alipay.atec2022;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
-import java.sql.Timestamp;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -20,17 +18,8 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Component
 public class TotalEnergyLegacyService {
-    static class ToCollect {
-        String user_id;
-        utils.Status status;
-        int total_energy;
 
-        public ToCollect(String user_id, int total_energy) {
-            this.user_id = user_id;
-            this.total_energy = total_energy;
-            this.status = utils.Status.EMPTY;
-        }
-    }
+    private static final Logger LOG = LoggerFactory.getLogger(TotalEnergyLegacyService.class);
 
     private final ToCollectEnergyRepository toCollectEnergyRepository;
     private final TotalEnergyRepository totalEnergyRepository;
@@ -49,34 +38,47 @@ public class TotalEnergyLegacyService {
     @Transactional
     public void doCollectEnergy(String userId, Integer toCollectEnergyId) {
         long request_idx = request_count.getAndAdd(1);
-        if (request_idx > 100 * 10000) {
+        if (request_idx % 10000 == 0) {
             //统计线上总请求次数
-            System.out.println(request_idx);
+            LOG.info(String.valueOf(request_idx));
         }
         //内存过滤
         ToCollect toCollect = toCollects[toCollectEnergyId];
-        if (toCollect == null || toCollect.status == utils.Status.ALL_COLLECTED || (!Objects.equals(toCollect.user_id, userId) && toCollect.status != utils.Status.EMPTY)) {
+        if (toCollect == null || toCollect.status == utils.Status.ALL_COLLECTED ||
+                (!Objects.equals(toCollect.user_id, userId)
+                        && (toCollect.status != utils.Status.EMPTY || toCollect.total_energy <= 3)
+                )
+        ) {
             return;
         }
-        ToCollectEnergy toCollectEnergy = this.toCollectEnergyRepository.findById2(toCollectEnergyId);
-        TotalEnergy totalEnergy = this.totalEnergyRepository.findByUserId(userId);
-        if (toCollectEnergy != null && totalEnergy != null) {
-            if (toCollectEnergy.getUserId().equals(userId)) {
-                totalEnergy.setTotalEnergy(totalEnergy.getTotalEnergy() + toCollectEnergy.getToCollectEnergy());
-                toCollectEnergy.setToCollectEnergy(0);
-                toCollectEnergy.setStatus("all_collected");
+        synchronized (toCollects[toCollectEnergyId]) {
+            if (toCollect.status == utils.Status.ALL_COLLECTED ||
+                    (!Objects.equals(toCollect.user_id, userId)
+                            && (toCollect.status != utils.Status.EMPTY || toCollect.total_energy <= 3)
+                    )
+            ) {
+                return;
+            }
+            TotalEnergy totalEnergy = this.totalEnergyRepository.findByUserId(userId);
+            if (totalEnergy == null) {
+                return;
+            }
+            if (toCollect.user_id.equals(userId)) {
+                totalEnergy.setTotalEnergy(totalEnergy.getTotalEnergy() + toCollect.total_energy);
                 toCollect.total_energy = 0;
-                toCollect.status = utils.Status.ALL_COLLECTED;
+                toCollect.status = utils.Status.ALL_COLLECTED; //("all_collected");
             } else {
-                int toCollectEnergyCount = (int) Math.floor((double) toCollectEnergy.getToCollectEnergy() * 0.3);
+                int toCollectEnergyCount = (int) Math.floor((double) toCollect.total_energy * 0.3);
                 totalEnergy.setTotalEnergy(totalEnergy.getTotalEnergy() + toCollectEnergyCount);
-                toCollectEnergy.setToCollectEnergy(toCollectEnergy.getToCollectEnergy() - toCollectEnergyCount);
-                toCollectEnergy.setStatus("collected_by_other");
-                toCollect.total_energy = toCollectEnergy.getToCollectEnergy();
+                toCollect.total_energy = toCollect.total_energy - toCollectEnergyCount;
                 toCollect.status = utils.Status.COLLECTED_BY_OTHER;
             }
-            this.totalEnergyRepository.save(totalEnergy);
-            this.toCollectEnergyRepository.save(toCollectEnergy);
+            this.totalEnergyRepository.update(totalEnergy.getTotalEnergy(), userId);
+            this.toCollectEnergyRepository.update(
+                    toCollect.total_energy,
+                    toCollect.status == utils.Status.ALL_COLLECTED ? "all_collected" : "collected_by_other",
+                    toCollectEnergyId
+            );
         }
     }
 }
