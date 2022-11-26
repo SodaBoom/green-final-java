@@ -49,6 +49,7 @@ public class TotalEnergyLegacyService {
     public void doCollectEnergy(String userId, Integer toCollectEnergyId) {
         //内存过滤
         MemToCollect memToCollect = memToCollects[toCollectEnergyId];
+        //  todo 只出现了一次 null，可以优化
         if (memToCollect == null || memToCollect.status == utils.Status.ALL_COLLECTED ||
                 (!Objects.equals(memToCollect.user_id, userId)
                         && (memToCollect.status != utils.Status.EMPTY || memToCollect.total_energy <= 3)
@@ -57,17 +58,7 @@ public class TotalEnergyLegacyService {
             return;
         }
         synchronized (memToCollects[toCollectEnergyId]) {
-            if (memToCollect.status == utils.Status.ALL_COLLECTED ||
-                    (!Objects.equals(memToCollect.user_id, userId)
-                            && (memToCollect.status != utils.Status.EMPTY || memToCollect.total_energy <= 3)
-                    )
-            ) {
-                return;
-            }
             AtomicInteger memTotalEnergy = memTotalEnergyMap.get(userId);
-            if (memTotalEnergy == null) {
-                return;
-            }
             if (memToCollect.user_id.equals(userId)) {
                 memTotalEnergy.addAndGet(memToCollect.total_energy);
                 memToCollect.total_energy = 0;
@@ -92,5 +83,6 @@ public class TotalEnergyLegacyService {
         memTotalEnergyMap.forEach((user_id, total_energy) -> {
             this.totalEnergyRepository.update(total_energy.get(), user_id);
         });
+//        LOG.info("stats: {}, {}, {}", memToCollectNull.get(), memTotalEnergyNull.get(), syncReturnCount.get()); //  stats: 1, 0, 0
     }
 }
