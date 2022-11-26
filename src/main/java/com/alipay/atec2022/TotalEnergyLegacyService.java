@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author khotyn
@@ -30,7 +29,6 @@ public class TotalEnergyLegacyService {
     private final MemToCollect[] memToCollects;
     private final Map<String, AtomicInteger> memTotalEnergyMap;
 
-    private final AtomicLong request_count = new AtomicLong(0);
 
     public TotalEnergyLegacyService(ToCollectEnergyRepository toCollectEnergyRepository, TotalEnergyRepository totalEnergyRepository) {
         this.toCollectEnergyRepository = toCollectEnergyRepository;
@@ -48,13 +46,7 @@ public class TotalEnergyLegacyService {
         LOG.info("ALL IN MEM!");
     }
 
-    @Transactional
     public void doCollectEnergy(String userId, Integer toCollectEnergyId) {
-        long request_idx = request_count.getAndAdd(1);
-        if (request_idx % 10000 == 0) {
-            //统计线上总请求次数
-            LOG.info(String.valueOf(request_idx));
-        }
         //内存过滤
         MemToCollect memToCollect = memToCollects[toCollectEnergyId];
         if (memToCollect == null || memToCollect.status == utils.Status.ALL_COLLECTED ||
@@ -76,23 +68,29 @@ public class TotalEnergyLegacyService {
             if (memTotalEnergy == null) {
                 return;
             }
-            int curTotalEnergy;
             if (memToCollect.user_id.equals(userId)) {
-                curTotalEnergy = memTotalEnergy.addAndGet(memToCollect.total_energy);
+                memTotalEnergy.addAndGet(memToCollect.total_energy);
                 memToCollect.total_energy = 0;
                 memToCollect.status = utils.Status.ALL_COLLECTED; //("all_collected");
             } else {
                 int toCollectEnergyCount = (int) Math.floor((double) memToCollect.total_energy * 0.3);
-                curTotalEnergy = memTotalEnergy.addAndGet(toCollectEnergyCount);
-                memToCollect.total_energy = memToCollect.total_energy - toCollectEnergyCount;
+                memTotalEnergy.addAndGet(toCollectEnergyCount);
+                memToCollect.total_energy -= toCollectEnergyCount;
                 memToCollect.status = utils.Status.COLLECTED_BY_OTHER;
             }
-            this.totalEnergyRepository.update(curTotalEnergy, userId);
+//            this.totalEnergyRepository.update(curTotalEnergy, userId);
 //            this.toCollectEnergyRepository.update(
 //                    memToCollect.total_energy,
 //                    memToCollect.status == utils.Status.ALL_COLLECTED ? "all_collected" : "collected_by_other",
 //                    toCollectEnergyId
 //            );
         }
+    }
+
+    @Transactional
+    public void executeUpdate() {
+        memTotalEnergyMap.forEach((user_id, total_energy) -> {
+            this.totalEnergyRepository.update(total_energy.get(), user_id);
+        });
     }
 }
