@@ -24,6 +24,9 @@ public interface TotalEnergyRepository extends CrudRepository<TotalEnergy, Integ
     @Query("SELECT totalEnergy FROM TotalEnergy totalEnergy WHERE totalEnergy.userId = ?1")
     TotalEnergy findByUserIdNotUpdate(String userId);
 
+    @Query("SELECT totalEnergy FROM TotalEnergy totalEnergy")
+    List<TotalEnergy> findAll();
+
     @Modifying
     @Query("UPDATE TotalEnergy SET totalEnergy = ?1 WHERE userId = ?2")
     void update(Integer toCollectEnergy, String userId);

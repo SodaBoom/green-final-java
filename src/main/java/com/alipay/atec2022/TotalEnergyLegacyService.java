@@ -9,7 +9,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -23,16 +27,25 @@ public class TotalEnergyLegacyService {
 
     private final ToCollectEnergyRepository toCollectEnergyRepository;
     private final TotalEnergyRepository totalEnergyRepository;
-    private final ToCollect[] toCollects = new ToCollect[105 * 10000];
+    private final MemToCollect[] memToCollects;
+    private final Map<String, AtomicInteger> memTotalEnergyMap;
 
     private final AtomicLong request_count = new AtomicLong(0);
 
     public TotalEnergyLegacyService(ToCollectEnergyRepository toCollectEnergyRepository, TotalEnergyRepository totalEnergyRepository) {
         this.toCollectEnergyRepository = toCollectEnergyRepository;
         this.totalEnergyRepository = totalEnergyRepository;
-        for (ToCollectEnergy energy : toCollectEnergyRepository.findAll()) {
-            toCollects[energy.getId()] = new ToCollect(energy.getUserId(), energy.getToCollectEnergy());
+        List<ToCollectEnergy> allToCollectEnergyList = toCollectEnergyRepository.findAll();
+        memToCollects = new MemToCollect[allToCollectEnergyList.size() + 1];
+        for (ToCollectEnergy energy : allToCollectEnergyList) {
+            memToCollects[energy.getId()] = new MemToCollect(energy.getUserId(), energy.getToCollectEnergy());
         }
+        List<TotalEnergy> allTotalEnergyList = totalEnergyRepository.findAll();
+        memTotalEnergyMap = new HashMap<>(allTotalEnergyList.size());
+        for (TotalEnergy energy : allTotalEnergyList) {
+            memTotalEnergyMap.put(energy.getUserId(), new AtomicInteger(energy.getTotalEnergy()));
+        }
+        LOG.info("ALL IN MEM!");
     }
 
     @Transactional
@@ -43,40 +56,41 @@ public class TotalEnergyLegacyService {
             LOG.info(String.valueOf(request_idx));
         }
         //内存过滤
-        ToCollect toCollect = toCollects[toCollectEnergyId];
-        if (toCollect == null || toCollect.status == utils.Status.ALL_COLLECTED ||
-                (!Objects.equals(toCollect.user_id, userId)
-                        && (toCollect.status != utils.Status.EMPTY || toCollect.total_energy <= 3)
+        MemToCollect memToCollect = memToCollects[toCollectEnergyId];
+        if (memToCollect == null || memToCollect.status == utils.Status.ALL_COLLECTED ||
+                (!Objects.equals(memToCollect.user_id, userId)
+                        && (memToCollect.status != utils.Status.EMPTY || memToCollect.total_energy <= 3)
                 )
         ) {
             return;
         }
-        synchronized (toCollects[toCollectEnergyId]) {
-            if (toCollect.status == utils.Status.ALL_COLLECTED ||
-                    (!Objects.equals(toCollect.user_id, userId)
-                            && (toCollect.status != utils.Status.EMPTY || toCollect.total_energy <= 3)
+        synchronized (memToCollects[toCollectEnergyId]) {
+            if (memToCollect.status == utils.Status.ALL_COLLECTED ||
+                    (!Objects.equals(memToCollect.user_id, userId)
+                            && (memToCollect.status != utils.Status.EMPTY || memToCollect.total_energy <= 3)
                     )
             ) {
                 return;
             }
-            TotalEnergy totalEnergy = this.totalEnergyRepository.findByUserId(userId);
-            if (totalEnergy == null) {
+            AtomicInteger memTotalEnergy = memTotalEnergyMap.get(userId);
+            if (memTotalEnergy == null) {
                 return;
             }
-            if (toCollect.user_id.equals(userId)) {
-                totalEnergy.setTotalEnergy(totalEnergy.getTotalEnergy() + toCollect.total_energy);
-                toCollect.total_energy = 0;
-                toCollect.status = utils.Status.ALL_COLLECTED; //("all_collected");
+            int curTotalEnergy;
+            if (memToCollect.user_id.equals(userId)) {
+                curTotalEnergy = memTotalEnergy.addAndGet(memToCollect.total_energy);
+                memToCollect.total_energy = 0;
+                memToCollect.status = utils.Status.ALL_COLLECTED; //("all_collected");
             } else {
-                int toCollectEnergyCount = (int) Math.floor((double) toCollect.total_energy * 0.3);
-                totalEnergy.setTotalEnergy(totalEnergy.getTotalEnergy() + toCollectEnergyCount);
-                toCollect.total_energy = toCollect.total_energy - toCollectEnergyCount;
-                toCollect.status = utils.Status.COLLECTED_BY_OTHER;
+                int toCollectEnergyCount = (int) Math.floor((double) memToCollect.total_energy * 0.3);
+                curTotalEnergy = memTotalEnergy.addAndGet(toCollectEnergyCount);
+                memToCollect.total_energy = memToCollect.total_energy - toCollectEnergyCount;
+                memToCollect.status = utils.Status.COLLECTED_BY_OTHER;
             }
-            this.totalEnergyRepository.update(totalEnergy.getTotalEnergy(), userId);
+            this.totalEnergyRepository.update(curTotalEnergy, userId);
             this.toCollectEnergyRepository.update(
-                    toCollect.total_energy,
-                    toCollect.status == utils.Status.ALL_COLLECTED ? "all_collected" : "collected_by_other",
+                    memToCollect.total_energy,
+                    memToCollect.status == utils.Status.ALL_COLLECTED ? "all_collected" : "collected_by_other",
                     toCollectEnergyId
             );
         }
