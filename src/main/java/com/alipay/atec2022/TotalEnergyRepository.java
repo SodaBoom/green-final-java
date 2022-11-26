@@ -30,4 +30,8 @@ public interface TotalEnergyRepository extends CrudRepository<TotalEnergy, Integ
     @Modifying
     @Query("UPDATE TotalEnergy SET totalEnergy = ?1 WHERE userId = ?2")
     void update(Integer toCollectEnergy, String userId);
+
+    @Modifying
+    @Query("UPDATE TotalEnergy SET totalEnergy = ?1 WHERE userId IN (?2)")
+    void update(Integer toCollectEnergy, List<String> userIds);
 }

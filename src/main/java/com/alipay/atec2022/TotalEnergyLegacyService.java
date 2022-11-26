@@ -24,13 +24,19 @@ public class TotalEnergyLegacyService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TotalEnergyLegacyService.class);
 
+    private final RepoService repoService;
     private final ToCollectEnergyRepository toCollectEnergyRepository;
     private final TotalEnergyRepository totalEnergyRepository;
     private final MemToCollect[] memToCollects;
     private final Map<String, AtomicInteger> memTotalEnergyMap;
 
 
-    public TotalEnergyLegacyService(ToCollectEnergyRepository toCollectEnergyRepository, TotalEnergyRepository totalEnergyRepository) {
+    public TotalEnergyLegacyService(
+            ToCollectEnergyRepository toCollectEnergyRepository,
+            TotalEnergyRepository totalEnergyRepository,
+            RepoService repoService
+    ) {
+        this.repoService = repoService;
         this.toCollectEnergyRepository = toCollectEnergyRepository;
         this.totalEnergyRepository = totalEnergyRepository;
         List<ToCollectEnergy> allToCollectEnergyList = toCollectEnergyRepository.findAll();
@@ -70,11 +76,7 @@ public class TotalEnergyLegacyService {
                 memToCollect.status = utils.Status.COLLECTED_BY_OTHER;
             }
 //            this.totalEnergyRepository.update(curTotalEnergy, userId);
-//            this.toCollectEnergyRepository.update(
-//                    memToCollect.total_energy,
-//                    memToCollect.status == utils.Status.ALL_COLLECTED ? "all_collected" : "collected_by_other",
-//                    toCollectEnergyId
-//            );
+            repoService.updateToCollect(toCollectEnergyId, memToCollect);
         }
     }
 
