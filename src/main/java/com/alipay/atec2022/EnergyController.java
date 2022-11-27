@@ -12,9 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import javax.transaction.Transactional;
-import java.sql.Timestamp;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -38,11 +35,16 @@ public class EnergyController {
     public Boolean collectEnergy(@PathVariable String userId, @PathVariable Integer toCollectEnergyId) {
         totalEnergyLegacyService.doCollectEnergy(userId, toCollectEnergyId);
         long request_idx = request_count.addAndGet(1);
-        if (request_idx == 100_0000) {
+        if (request_idx == 100_0000 - 1) {
             //统计线上总请求次数
-            LOG.info("update start {}", request_idx);
-            totalEnergyLegacyService.executeUpdate();
-            LOG.info("update end {}", request_idx);
+            LOG.info("UpdateToCollect start {}", request_idx);
+            totalEnergyLegacyService.executeUpdateToCollect();
+            LOG.info("UpdateToCollect end {}", request_idx);
+        } else if (request_idx == 100_0000) {
+            //统计线上总请求次数
+            LOG.info("UpdateTotal start {}", request_idx);
+            totalEnergyLegacyService.executeUpdateTotal();
+            LOG.info("UpdateTotal end {}", request_idx);
         }
         return true;
     }

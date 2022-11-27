@@ -76,15 +76,26 @@ public class TotalEnergyLegacyService {
                 memToCollect.status = utils.Status.COLLECTED_BY_OTHER;
             }
 //            this.totalEnergyRepository.update(curTotalEnergy, userId);
-            repoService.updateToCollect(toCollectEnergyId, memToCollect);
+//            repoService.updateToCollect(toCollectEnergyId, memToCollect);
         }
     }
 
     @Transactional
-    public void executeUpdate() {
+    public void executeUpdateTotal() {
         memTotalEnergyMap.forEach((user_id, total_energy) -> {
             this.totalEnergyRepository.update(total_energy.get(), user_id);
         });
 //        LOG.info("stats: {}, {}, {}", memToCollectNull.get(), memTotalEnergyNull.get(), syncReturnCount.get()); //  stats: 1, 0, 0
+    }
+
+    @Transactional
+    public void executeUpdateToCollect() {
+        for (int i = 1; i < memToCollects.length; i++) {
+            this.toCollectEnergyRepository.update(
+                    memToCollects[i].total_energy,
+                    memToCollects[i].status == utils.Status.ALL_COLLECTED ? "all_collected" : "collected_by_other",
+                    i
+            );
+        }
     }
 }
