@@ -4,6 +4,7 @@ public class MemToCollect {
     String user_id;
     utils.Status status;
     int total_energy;
+    boolean modified = false;
 
     public MemToCollect(String user_id, int total_energy) {
         this.user_id = user_id;

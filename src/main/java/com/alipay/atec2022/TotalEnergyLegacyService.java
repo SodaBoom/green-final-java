@@ -63,6 +63,7 @@ public class TotalEnergyLegacyService {
         ) {
             return;
         }
+        memToCollect.modified = true;
         synchronized (memToCollects[toCollectEnergyId]) {
             AtomicInteger memTotalEnergy = memTotalEnergyMap.get(userId);
             if (memToCollect.user_id.equals(userId)) {
@@ -91,11 +92,14 @@ public class TotalEnergyLegacyService {
     @Transactional
     public void executeUpdateToCollect() {
         for (int i = 1; i < memToCollects.length; i++) {
-            this.toCollectEnergyRepository.update(
-                    memToCollects[i].total_energy,
-                    memToCollects[i].status == utils.Status.ALL_COLLECTED ? "all_collected" : "collected_by_other",
-                    i
-            );
+            if (memToCollects[i].modified) {
+                this.toCollectEnergyRepository.update(
+                        memToCollects[i].total_energy,
+                        memToCollects[i].status == utils.Status.ALL_COLLECTED ? "all_collected" : "collected_by_other",
+                        i
+                );
+            }
         }
+        LOG.info("UpdateToCollect end");
     }
 }

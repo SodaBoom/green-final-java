@@ -36,12 +36,9 @@ public class EnergyController {
         totalEnergyLegacyService.doCollectEnergy(userId, toCollectEnergyId);
         long request_idx = request_count.addAndGet(1);
         if (request_idx == 100_0000 - 1) {
-            //统计线上总请求次数
             LOG.info("UpdateToCollect start {}", request_idx);
-            totalEnergyLegacyService.executeUpdateToCollect();
-            LOG.info("UpdateToCollect end {}", request_idx);
+            new Thread(totalEnergyLegacyService::executeUpdateToCollect).start();
         } else if (request_idx == 100_0000) {
-            //统计线上总请求次数
             LOG.info("UpdateTotal start {}", request_idx);
             totalEnergyLegacyService.executeUpdateTotal();
             LOG.info("UpdateTotal end {}", request_idx);
