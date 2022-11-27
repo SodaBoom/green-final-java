@@ -38,10 +38,19 @@ public class EnergyController {
         if (request_idx == 100_0000 - 1) {
             LOG.info("UpdateToCollect start {}", request_idx);
             new Thread(totalEnergyLegacyService::executeUpdateToCollect).start();
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         } else if (request_idx == 100_0000) {
             LOG.info("UpdateTotal start {}", request_idx);
-            totalEnergyLegacyService.executeUpdateTotal();
-            LOG.info("UpdateTotal end {}", request_idx);
+            new Thread(totalEnergyLegacyService::executeUpdateTotal).start();
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
         return true;
     }

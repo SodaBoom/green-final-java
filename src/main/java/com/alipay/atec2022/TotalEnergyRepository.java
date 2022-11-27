@@ -31,7 +31,10 @@ public interface TotalEnergyRepository extends CrudRepository<TotalEnergy, Integ
     @Query("UPDATE TotalEnergy SET totalEnergy = ?1 WHERE userId = ?2")
     void update(Integer toCollectEnergy, String userId);
 
-    @Modifying
-    @Query("UPDATE TotalEnergy SET totalEnergy = ?1 WHERE userId IN (?2)")
-    void update(Integer toCollectEnergy, List<String> userIds);
+    @Query(value = "LOCK TABLE total_energy WRITE", nativeQuery = true)
+    void lock();
+
+    @Query(value = "UNLOCK TABLES", nativeQuery = true)
+    void unlock();
+
 }

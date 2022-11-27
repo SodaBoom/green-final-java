@@ -83,14 +83,18 @@ public class TotalEnergyLegacyService {
 
     @Transactional
     public void executeUpdateTotal() {
+        this.totalEnergyRepository.lock();
         memTotalEnergyMap.forEach((user_id, total_energy) -> {
             this.totalEnergyRepository.update(total_energy.get(), user_id);
         });
+        this.totalEnergyRepository.unlock();
+        LOG.info("UpdateTotal end");
 //        LOG.info("stats: {}, {}, {}", memToCollectNull.get(), memTotalEnergyNull.get(), syncReturnCount.get()); //  stats: 1, 0, 0
     }
 
     @Transactional
     public void executeUpdateToCollect() {
+        this.toCollectEnergyRepository.lock();
         for (int i = 1; i < memToCollects.length; i++) {
             if (memToCollects[i].modified) {
                 this.toCollectEnergyRepository.update(
@@ -100,6 +104,7 @@ public class TotalEnergyLegacyService {
                 );
             }
         }
+        this.toCollectEnergyRepository.unlock();
         LOG.info("UpdateToCollect end");
     }
 }

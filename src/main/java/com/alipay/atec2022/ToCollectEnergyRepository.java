@@ -34,4 +34,10 @@ public interface ToCollectEnergyRepository extends CrudRepository<ToCollectEnerg
     @Query("UPDATE ToCollectEnergy SET toCollectEnergy = ?1, status = ?2 WHERE id = ?3")
     void update(Integer toCollectEnergy, String status, Integer id);
 
+    @Query(value = "LOCK TABLE to_collect_energy WRITE", nativeQuery = true)
+    void lock();
+
+    @Query(value = "UNLOCK TABLES", nativeQuery = true)
+    void unlock();
+
 }
